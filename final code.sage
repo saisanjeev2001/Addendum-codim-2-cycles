@@ -2,39 +2,42 @@ import time
 from sage.databases.cremona import parse_cremona_label
 import numpy as numpy
 
-#this is the final code, modified so as to compute modular symbol only once, also includes paramter for level of Mazur tate
+#this is the final code used for the computation
 
 def iwasawa_invariants_of_ec(E,p,D = 1,m = 0):
 	"""
 	Returns the mu and lambda invariants of E (for the prime p).  
 	If the minimal mu-invariant fails to be 0, then '?' is returned for mu
 	Input:
-	-	``E`` -- elliptic curve
-	-	``p`` -- prime, this code works only for odd primes
-  - ``D`` -- The discriminant of the quadratic field being twisted by, 1 by default
-  - ``m`` -- The additional depth to which we wish to compute the slopes, to get a better estimate of the final slopes, 0 by default
-  Output:
-	In the supersingular case: 
+	-``E`` -- elliptic curve
+	-``p`` -- prime, this code works only for odd primes
+  	- ``D`` -- The discriminant of the quadratic field being twisted by, 1 by default, eg if the field is Q(\sqrt(-23)), then D = -23, if 
+	-	   it is Q(\sqrt(-21)), then enter D = -84
+  	- ``m`` -- The additional depth to which we wish to compute the slopes, to get a better estimate of the final slopes, 0 by default
+  	Output:
+	In the supersingular case: (mu_plus,mu_minus), [lambda_plus, valuations of roots of Lp+,lambda_minus, valuations of roots of Lp-]
+	Note that the forced zero at 0 due to the functional equation does not show up in list of valuations of roots
 	If the minimal mu wasn't found to be, then mu's are returned as '?'
 	"""
-	if E.is_supersingular(p): #checks if E is supersingular at p
- 		correction = 0 
+	Etwist = E.quadratic_twist(D)
+	if Etwist.is_supersingular(p): #checks if E is supersingular at p
+		correction = 0 
 		if (E.quadratic_twist(D)).root_number() == -1:
 			correction = 1 # This accounts for the forced zero at T = 0 due to the functional equation
-		MTs = [MazurTate(E,p,1,M1,D), MazurTate(E,p,2,M1,D)] # Keeps track of Mazur-Tate elements
+		MTs = [MazurTate(E,p,1,D), MazurTate(E,p,2,D)] # Keeps track of Mazur-Tate elements
 		done = (mu(MTs[0],p) == 0) and (mu(MTs[1],p) == 0)
 		n = 3
 		while not done and (n <= mu_bail(p)): #Computes the level at which the mu invariant vanishes for L_{p,n}^{+-}
-			MTs += [MazurTate(E,p,n,M1,D)] 
+			MTs += [MazurTate(E,p,n,D)] 
 			done = (mu(MTs[n-1],p) == 0) and (mu(MTs[n-2],p) == 0)
 			n = n + 1
 		for i in range(m): #This computes few more levels to get the desired accuracy of valuation of roots
-			MTs += [MazurTate(E,p,n+i,M1,D)]
+			MTs += [MazurTate(E,p,n+i,D)]
 		n = n + m - 1
 		Qp = pAdicField(p,2*n+5)
 		S.<T> = PolynomialRing(Qp)
 		def slopes(poly,m):   
-      #This function computes approximations to Lp +/- and computes their newton slopes
+      		#This function computes approximations to Lp +/- and computes their newton slopes
 			if m%2 == 1:
 				quotient = (poly.factor()/Phip(m,p)).expand()                
 				Lpplus = S(quotient)
@@ -87,8 +90,9 @@ def iwasawa_invariants_of_ec(E,p,D = 1,m = 0):
 			return '?',(lambda_plus,lambda_minus)
 		else:
 			return (mu_plus,mu_minus), [lambda_plus, slopes_plus,lambda_minus, slopes_minus]
+	else : raise ValueError('the elliptic curve(or its twist if D != 1) is not supersingular at the prime p')
 
-def MazurTate(E,p,n,M1,D = 1):
+def MazurTate(E,p,n,D = 1):
 	"""
 	Returns the p-adic Mazur-Tate element of level n.  That is, for p odd, we take the element
 		sum_{a in (Z/p^{n+1}Z)^*} [a/p^{n+1}]^+_E sigma_a
@@ -116,10 +120,7 @@ def MazurTate(E,p,n,M1,D = 1):
 		for a in Zmod(abs(D)).list_of_elements_of_multiplicative_group():
 			answer = answer + kronecker(D,a)*M1(r+a/abs(D))
 		return answer
-	if modp and (p!=2):
-		R.<T> = PolynomialRing(QQ)
-	else:
-		R.<T> = PolynomialRing(QQ)
+	R.<T> = PolynomialRing(QQ)    
 	if n > 0:
 		mt = R(0)
 		if p > 2:
@@ -138,13 +139,9 @@ def MazurTate(E,p,n,M1,D = 1):
 				oneplusTpow = oneplusTpow * (1 + T)
 			end = time.time()
 			t = end-start
-			if t>=bigcall:
-				line = E.label()+": p="+str(p)+", n="+str(n)
-				line += ", time: "+str(end-start)+"\n"
-				write_to_file(bigcallfile,line)
-      ans = 2*R(mt)
-				##extra factor of 2 here is because we are only summing up to (p-1)/2
-				##and using the + modular symbol
+			ans = 2*mt
+			##extra factor of 2 here is because we are only summing up to (p-1)/2
+			##and using the + modular symbol
 	return ans
 
 def mu(f,p):
