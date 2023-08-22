@@ -6,14 +6,13 @@ import numpy as numpy
 
 def iwasawa_invariants_of_ec(E,p,D = 1):
 	"""
-	Returns the mu and lambda invariants of E (for the prime p).  
+	Returns the mu and lambda invariants, and the valuations of the roots of the +/- p-adic L-function of E.  
 	If the minimal mu-invariant fails to be 0, then '?' is returned for mu
 	Input:
 	-``E`` -- elliptic curve
 	-``p`` -- prime, this code works only for odd primes
   	- ``D`` -- The discriminant of the quadratic field being twisted by, 1 by default, eg if the field is Q(\sqrt(-23)), then D = -23, if 
 	-	   it is Q(\sqrt(-21)), then enter D = -84
-  	- ``m`` -- The additional depth to which we wish to compute the slopes, to get a better estimate of the final slopes, 0 by default
   	Output:
 	In the supersingular case: (mu_plus,mu_minus), [lambda_plus, valuations of roots of Lp+,lambda_minus, valuations of roots of Lp-]
 	If the constant terms of L_p^+, L_p^- are non-vanishing then the valuations of the roots obtained are exact, as proven in the article
@@ -58,7 +57,6 @@ def iwasawa_invariants_of_ec(E,p,D = 1):
 					l += (S(cyc(j,p))).newton_slopes()
 			return l
 		#The next piece of code computes the lambda invariants, I use the last two mazur tate elements computed
-		#If the constant terms of 
 		if n%2 == 0:        
 			lambda_plus = lamb(MTs[n-2],p)-qn(p,n-1) 
 			lambda_minus = lamb(MTs[n-1],p)-qn(p,n) 
@@ -164,8 +162,6 @@ def MazurTate(E,p,n,D = 1):
 			end = time.time()
 			t = end-start
 			ans = 2*mt
-			##extra factor of 2 here is because we are only summing up to (p-1)/2
-			##and using the + modular symbol
 	return ans
 
 def mu(f,p):
